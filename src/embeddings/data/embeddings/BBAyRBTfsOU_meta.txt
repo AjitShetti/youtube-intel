@@ -1,0 +1,4 @@
+model=all-mpnet-base-v2
+num_embeddings=963
+embedding_dim=768
+source_csv=BBAyRBTfsOU.csv
