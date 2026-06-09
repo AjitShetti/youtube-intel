@@ -4,6 +4,10 @@ from pathlib import Path
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
 from src.config import get_config
+from src.utils.logger import setup_logger
+logger = setup_logger(__name__)
+
+
 
 
 class TopicModeler:
@@ -20,9 +24,9 @@ class TopicModeler:
         
         try:
             self.embedder = SentenceTransformer(embed_model)
-            print(f"[INFO] Loaded embedding model: {embed_model}")
+            logger.info(f"Loaded embedding model: {embed_model}")
         except Exception as e:
-            print(f"[ERROR] Failed to load embedding model: {e}")
+            logger.error(f"Failed to load embedding model: {e}")
             raise
     
     def load_inputs(self, csv_path, emb_path):
@@ -88,7 +92,7 @@ class TopicModeler:
                 f"Mismatch: {len(texts)} texts but {len(embeddings)} embeddings"
             )
         
-        print(f"[INFO] Loaded {len(texts)} texts and embeddings")
+        logger.info(f"Loaded {len(texts)} texts and embeddings")
         
         return df, texts, embeddings
     
@@ -104,7 +108,7 @@ class TopicModeler:
             Tuple of (topic_model, topics, probabilities)
         """
         if len(texts) < 10:
-            print("[WARNING] Very few texts (<10) - results may not be meaningful")
+            logger.warning("Very few texts (<10) - results may not be meaningful")
         
         try:
             # Create BERTopic model
@@ -117,15 +121,15 @@ class TopicModeler:
                 calculate_probabilities=True
             )
             
-            print("[INFO] Fitting BERTopic model...")
+            logger.info("Fitting BERTopic model...")
             topics, probs = topic_model.fit_transform(texts, embeddings)
             
             # Get topic info
             num_topics = len(set(topics)) - (1 if -1 in topics else 0)
             num_outliers = sum(1 for t in topics if t == -1)
             
-            print(f"[INFO] Discovered {num_topics} topics")
-            print(f"[INFO] {num_outliers} outlier documents (topic -1)")
+            logger.info(f"Discovered {num_topics} topics")
+            logger.info(f"{num_outliers} outlier documents (topic -1)")
             
             return topic_model, topics, probs
             
@@ -157,9 +161,9 @@ class TopicModeler:
         # Save model
         try:
             topic_model.save(str(model_path))
-            print(f"[OK] Saved BERTopic model -> {model_path}")
+            logger.info(f"Saved BERTopic model -> {model_path}")
         except Exception as e:
-            print(f"[ERROR] Failed to save model: {e}")
+            logger.error(f"Failed to save model: {e}")
             raise
         
         # Attach topics to dataframe
@@ -172,9 +176,9 @@ class TopicModeler:
                 df["topic_probability"] = [max(prob) if len(prob) > 0 else 0.0 for prob in probs]
             
             df.to_csv(info_path, index=False, encoding="utf-8")
-            print(f"[OK] Saved topics CSV -> {info_path}")
+            logger.info(f"Saved topics CSV -> {info_path}")
         except Exception as e:
-            print(f"[ERROR] Failed to save topics CSV: {e}")
+            logger.error(f"Failed to save topics CSV: {e}")
             raise
         
         # Save topic summary
@@ -212,18 +216,18 @@ class TopicModeler:
                         f.write(f"Topic {topic_id} ({count} comments):\n")
                         f.write(f"  Keywords: {top_words}\n\n")
             
-            print(f"[OK] Saved topic summary -> {summary_path}")
+            logger.info(f"Saved topic summary -> {summary_path}")
         except Exception as e:
-            print(f"[WARNING] Failed to save summary: {e}")
+            logger.warning(f"Failed to save summary: {e}")
 
         # Save topic info CSV (for dashboard)
         topic_info_path = out_dir / f"{video_id}_topic_info.csv"
         try:
             topic_info = topic_model.get_topic_info()
             topic_info.to_csv(topic_info_path, index=False)
-            print(f"[OK] Saved topic info CSV -> {topic_info_path}")
+            logger.info(f"Saved topic info CSV -> {topic_info_path}")
         except Exception as e:
-            print(f"[WARNING] Failed to save topic info CSV: {e}")
+            logger.warning(f"Failed to save topic info CSV: {e}")
         
         return str(model_path), str(info_path), str(summary_path)
     
@@ -242,17 +246,17 @@ class TopicModeler:
         video_id = Path(csv_path).stem
         
         try:
-            print("[INFO] Loading inputs...")
+            logger.info("Loading inputs...")
             df, texts, embeddings = self.load_inputs(csv_path, emb_path)
             
-            print("[INFO] Fitting topics... this may take a few minutes")
+            logger.info("Fitting topics... this may take a few minutes")
             topic_model, topics, probs = self.fit(texts, embeddings)
             
-            print("[INFO] Saving outputs...")
+            logger.info("Saving outputs...")
             return self.save_outputs(topic_model, df, topics, probs, out_dir, video_id)
             
         except Exception as e:
-            print(f"[ERROR] Pipeline failed: {e}")
+            logger.error(f"Pipeline failed: {e}")
             return None
 
 
@@ -267,11 +271,11 @@ if __name__ == "__main__":
         
         if result:
             model_path, info_path, summary_path = result
-            print(f"\n✓ Topic modeling complete!")
-            print(f"  Model: {model_path}")
-            print(f"  Topics CSV: {info_path}")
-            print(f"  Summary: {summary_path}")
+            logger.info(f"\n✓ Topic modeling complete!")
+            logger.info(f"  Model: {model_path}")
+            logger.info(f"  Topics CSV: {info_path}")
+            logger.info(f"  Summary: {summary_path}")
         else:
-            print("\n✗ Topic modeling failed.")
+            logger.info("\n✗ Topic modeling failed.")
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        logger.info(f"\n✗ Error: {e}")

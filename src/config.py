@@ -2,9 +2,13 @@ import os
 import yaml
 from pathlib import Path
 from dotenv import load_dotenv
+from src.utils.logger import setup_logger
+logger = setup_logger(__name__)
+
+
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 class Config:
     def __init__(self, config_path="config.yaml"):
@@ -45,7 +49,7 @@ try:
     PROJECT_ROOT = Path(__file__).parent.parent
     config_instance = Config(PROJECT_ROOT / "config.yaml")
 except Exception as e:
-    print(f"Warning: Could not load config: {e}")
+    logger.warning(f"Could not load config: {e}")
     config_instance = None
 
 def get_config(key, default=None):

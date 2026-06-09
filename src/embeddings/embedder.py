@@ -3,6 +3,10 @@ import pandas as pd
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from src.config import get_config
+from src.utils.logger import setup_logger
+logger = setup_logger(__name__)
+
+
 
 
 class Embedder:
@@ -23,10 +27,10 @@ class Embedder:
             
             # Show which device is being used
             actual_device = self.model.device
-            print(f"[INFO] Loaded model '{model_name}' on device: {actual_device}")
+            logger.info(f"Loaded model '{model_name}' on device: {actual_device}")
             
         except Exception as e:
-            print(f"[ERROR] Failed to load model '{model_name}': {e}")
+            logger.error(f"Failed to load model '{model_name}': {e}")
             raise
     
     def embed_texts(self, texts, batch_size=32):
@@ -41,7 +45,7 @@ class Embedder:
             numpy array of embeddings
         """
         if not texts:
-            print("[WARNING] No texts provided for embedding")
+            logger.warning("No texts provided for embedding")
             return np.array([])
         
         # Filter out empty texts and track indices
@@ -54,11 +58,11 @@ class Embedder:
                 valid_indices.append(i)
         
         if not valid_texts:
-            print("[WARNING] No valid texts after filtering")
+            logger.warning("No valid texts after filtering")
             return np.array([])
         
         if len(valid_texts) < len(texts):
-            print(f"[INFO] Filtered out {len(texts) - len(valid_texts)} empty texts")
+            logger.info(f"Filtered out {len(texts) - len(valid_texts)} empty texts")
         
         try:
             embeddings = self.model.encode(
@@ -69,7 +73,7 @@ class Embedder:
             )
             return embeddings
         except Exception as e:
-            print(f"[ERROR] Failed to generate embeddings: {e}")
+            logger.error(f"Failed to generate embeddings: {e}")
             raise
     
     def process_csv(self, csv_path, out_dir="data/embeddings"):
@@ -87,19 +91,19 @@ class Embedder:
         
         # Validate input file
         if not csv_path.exists():
-            print(f"[ERROR] File not found: {csv_path}")
+            logger.error(f"File not found: {csv_path}")
             return None
         
         # Load CSV with error handling
         try:
             df = pd.read_csv(csv_path, encoding="utf-8")
         except Exception as e:
-            print(f"[ERROR] Failed to read CSV: {e}")
+            logger.error(f"Failed to read CSV: {e}")
             return None
         
         # Check if DataFrame is empty
         if df.empty:
-            print("[ERROR] CSV file contains no data")
+            logger.error("CSV file contains no data")
             return None
         
         # Validate required columns
@@ -107,24 +111,24 @@ class Embedder:
         missing_columns = [col for col in required_columns if col not in df.columns]
         
         if missing_columns:
-            print(f"[ERROR] Missing required columns: {missing_columns}")
+            logger.error(f"Missing required columns: {missing_columns}")
             return None
         
         # Handle NaN values and convert to string
         df["text_clean"] = df["text_clean"].fillna("")
         texts = df["text_clean"].astype(str).tolist()
         
-        print(f"[INFO] Loaded {len(texts)} comments from CSV")
+        logger.info(f"Loaded {len(texts)} comments from CSV")
         
         # Generate embeddings
         try:
             embs = self.embed_texts(texts)
         except Exception as e:
-            print(f"[ERROR] Embedding generation failed: {e}")
+            logger.error(f"Embedding generation failed: {e}")
             return None
         
         if len(embs) == 0:
-            print("[ERROR] No embeddings generated")
+            logger.error("No embeddings generated")
             return None
         
         # Prepare output directory
@@ -140,9 +144,9 @@ class Embedder:
         # Save embeddings
         try:
             np.save(emb_path, embs)
-            print(f"[OK] Saved embeddings -> {emb_path}")
+            logger.info(f"Saved embeddings -> {emb_path}")
         except Exception as e:
-            print(f"[ERROR] Failed to save embeddings: {e}")
+            logger.error(f"Failed to save embeddings: {e}")
             return None
         
         # Save mapping (only rows with valid embeddings)
@@ -157,9 +161,9 @@ class Embedder:
                 df[["comment_id", "text_clean"]].to_csv(
                     map_path, index=False, encoding="utf-8"
                 )
-            print(f"[OK] Saved mapping -> {map_path}")
+            logger.info(f"Saved mapping -> {map_path}")
         except Exception as e:
-            print(f"[ERROR] Failed to save mapping: {e}")
+            logger.error(f"Failed to save mapping: {e}")
             return None
         
         # Save metadata
@@ -169,9 +173,9 @@ class Embedder:
                 f.write(f"num_embeddings={len(embs)}\n")
                 f.write(f"embedding_dim={embs.shape[1]}\n")
                 f.write(f"source_csv={csv_path.name}\n")
-            print(f"[OK] Saved metadata -> {meta_path}")
+            logger.info(f"Saved metadata -> {meta_path}")
         except Exception as e:
-            print(f"[ERROR] Failed to save metadata: {e}")
+            logger.error(f"Failed to save metadata: {e}")
             return None
         
         return str(emb_path), str(map_path)
@@ -187,10 +191,10 @@ if __name__ == "__main__":
         
         if result:
             emb_path, map_path = result
-            print(f"\n✓ Processing complete!")
-            print(f"  Embeddings: {emb_path}")
-            print(f"  Mapping: {map_path}")
+            logger.info(f"\n✓ Processing complete!")
+            logger.info(f"  Embeddings: {emb_path}")
+            logger.info(f"  Mapping: {map_path}")
         else:
-            print("\n✗ Processing failed.")
+            logger.info("\n✗ Processing failed.")
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        logger.info(f"\n✗ Error: {e}")
