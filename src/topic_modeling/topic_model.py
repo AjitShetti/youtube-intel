@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from bertopic import BERTopic
+from bertopic.representation import KeyBERTInspired
 from sentence_transformers import SentenceTransformer
 from src.config import get_config
 from src.utils.logger import setup_logger
@@ -113,8 +114,10 @@ class TopicModeler:
         try:
             # Create BERTopic model
             # Note: We pass embedding_model but will use pre-computed embeddings
+            representation_model = KeyBERTInspired()
             topic_model = BERTopic(
                 embedding_model=self.embedder,
+                representation_model=representation_model,
                 n_gram_range=(1, 2),
                 min_topic_size=min(10, max(2, len(texts) // 20)),  # Adaptive min_topic_size
                 verbose=True,
@@ -123,6 +126,10 @@ class TopicModeler:
             
             logger.info("Fitting BERTopic model...")
             topics, probs = topic_model.fit_transform(texts, embeddings)
+            
+            # Generate and set clean custom labels for topics
+            topic_labels = topic_model.generate_topic_labels(nr_words=3, topic_prefix=False, word_length_limit=15, separator=", ")
+            topic_model.set_topic_labels(topic_labels)
             
             # Get topic info
             num_topics = len(set(topics)) - (1 if -1 in topics else 0)

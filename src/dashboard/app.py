@@ -170,7 +170,9 @@ if st.session_state.data_loaded and st.session_state.df_topics is not None:
             t_id = row.get("Topic")
             if t_id is not None:
                 # Try to get a descriptive name
-                if "Name" in row:
+                if "CustomName" in row and pd.notna(row.get("CustomName")):
+                    name = row["CustomName"]
+                elif "Name" in row:
                     name = row["Name"]
                 elif "Representation" in row:
                     name = str(row["Representation"])[:50] + "..." # Truncate if too long

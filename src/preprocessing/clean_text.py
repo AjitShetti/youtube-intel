@@ -2,6 +2,7 @@ import re
 import pandas as pd
 import spacy
 from pathlib import Path
+import html
 from src.utils.logger import setup_logger
 logger = setup_logger(__name__)
 
@@ -26,6 +27,8 @@ def clean_comment(text: str) -> str:
         return ""
     
     text = text.lower()
+    text = html.unescape(text)
+    text = re.sub(r'<[^>]+>', ' ', text)
     text = URL_RE.sub("", text)
     text = MENTION_RE.sub("", text)
     text = EMOJI_RE.sub("", text)
