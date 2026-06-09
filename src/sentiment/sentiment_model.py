@@ -3,7 +3,8 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
 from pathlib import Path
-# from sentiment_model import SentimentAnalyzer  # Removed circular import
+from src.utils.logger import setup_logger
+logger = setup_logger(__name__)
 
 
 class SentimentAnalyzer:
@@ -17,7 +18,7 @@ class SentimentAnalyzer:
         self.model_name = model_name
 
     def predict(self, text: str):
-        """Return sentiment label + score."""
+        """Return sentiment label + score"""
         try:
             # Truncate to 510 tokens (final sequence will be 512 with special tokens)
             # This ensures we never exceed the model's 514 position embedding limit
@@ -40,7 +41,7 @@ class SentimentAnalyzer:
                 logits = self.model(**encoded).logits
             probs = F.softmax(logits, dim=1)[0]
         except Exception as e:
-            print(f"[ERROR] Prediction failed for text: {str(text)[:50]}... Error: {e}")
+            logger.error(f"Prediction failed for text: {str(text)[:50]}... Error: {e}")
             return "neutral", 0.0
 
         labels = ["negative", "neutral", "positive"]
@@ -64,6 +65,6 @@ class SentimentAnalyzer:
         if out_path:
             Path(out_path).parent.mkdir(parents=True, exist_ok=True)
             df.to_csv(out_path, index=False)
-            print(f"[OK] Saved sentiment-enriched CSV -> {out_path}")
+            logger.info(f"Saved sentiment-enriched CSV -> {out_path}")
 
         return df

@@ -2,6 +2,10 @@ import os
 import json
 from googleapiclient.discovery import build
 from src.config import get_config
+from src.utils.logger import setup_logger
+logger = setup_logger(__name__)
+
+
 
 API_KEY = get_config("youtube.api_key")
 youtube = build("youtube", "v3", developerKey=API_KEY)
@@ -32,9 +36,9 @@ def fetch_comments(video_url: str, save_path="data/raw"):
         try:
             response = request.execute()
         except Exception as e:
-            print(f"Error fetching comments: {e}")
+            logger.info(f"Error fetching comments: {e}")
             if len(comments) > 0:
-                print(f"Returning {len(comments)} comments already fetched.")
+                logger.info(f"Returning {len(comments)} comments already fetched.")
                 break
             return None
 
@@ -63,4 +67,4 @@ def fetch_comments(video_url: str, save_path="data/raw"):
 
 if __name__ == "__main__":
     url = input("Enter YouTube URL: ")
-    print(fetch_comments(url))
+    logger.info(fetch_comments(url))
